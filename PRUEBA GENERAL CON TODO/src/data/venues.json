@@ -1,0 +1,86 @@
+[
+  {
+    "id": "v1",
+    "ownerId": null,
+    "name": "Vélez Sarsfield Stadium",
+    "address": {
+      "country": "Argentina",
+      "province": "CABA",
+      "city": "Buenos Aires"
+    },
+    "lat": -34.6356,
+    "lng": -58.5207,
+    "capacity": 50000,
+    "genres": [
+      "Rock",
+      "Metal",
+      "Pop"
+    ],
+    "links": {
+      "instagram": "https://instagram.com/velez",
+      "facebook": "",
+      "website": ""
+    },
+    "contact": {
+      "email": "programacion@velez.ar",
+      "whatsapp": "+541100000000",
+      "hideWhatsapp": true
+    }
+  },
+  {
+    "id": "v2",
+    "ownerId": null,
+    "name": "La Trastienda",
+    "address": {
+      "country": "Argentina",
+      "province": "CABA",
+      "city": "Buenos Aires"
+    },
+    "lat": -34.6179,
+    "lng": -58.3718,
+    "capacity": 1000,
+    "genres": [
+      "Indie",
+      "Rock",
+      "Pop"
+    ],
+    "links": {
+      "instagram": "https://instagram.com/latrastienda",
+      "facebook": "",
+      "website": "https://latrastienda.com"
+    },
+    "contact": {
+      "email": "booking@latrastienda.com",
+      "whatsapp": "+5491100000000",
+      "hideWhatsapp": false
+    }
+  },
+  {
+    "id": "v3",
+    "ownerId": null,
+    "name": "Sala Aguamarina (Ejemplo)",
+    "address": {
+      "country": "Argentina",
+      "province": "Buenos Aires",
+      "city": "Avellaneda"
+    },
+    "lat": -34.663,
+    "lng": -58.363,
+    "capacity": 350,
+    "genres": [
+      "Indie",
+      "Pop",
+      "Fusion"
+    ],
+    "links": {
+      "instagram": "https://instagram.com/sala.aguamarina",
+      "facebook": "https://facebook.com/sala.aguamarina",
+      "website": ""
+    },
+    "contact": {
+      "email": "contacto@salaaguamarina.ar",
+      "whatsapp": "+5491122334455",
+      "hideWhatsapp": false
+    }
+  }
+]
