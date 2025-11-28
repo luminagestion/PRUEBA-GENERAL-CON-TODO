@@ -25,3 +25,62 @@ a{ color:inherit; text-decoration:none; }
 .leaflet-container{ border-radius:18px; border:1px solid rgba(255,255,255,.08); }
 .sep{ height:1px; background:rgba(255,255,255,.08); margin:12px 0; }
 .notice{ font-size:13px; color:var(--muted); }
+.my-content-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.my-section {
+  margin-top: 2rem;
+}
+
+.my-section h2 {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+.my-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.my-item-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.my-item-thumb {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.my-item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.my-item-info h3 {
+  font-size: 1rem;
+  margin: 0 0 0.25rem;
+}
+
+.my-meta {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin: 0;
+}
