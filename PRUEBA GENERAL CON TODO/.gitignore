@@ -1,0 +1,19 @@
+# Dependencias
+node_modules/
+
+# Build de producción
+dist/
+
+# Archivos de entorno
+.env
+.env.*
+!.env.example
+.env.local
+
+# IDEs
+.vscode/
+.idea/
+
+# Sistema
+.DS_Store
+Thumbs.db
