@@ -94,6 +94,10 @@ export default function AddArtist() {
   const userId = user?.id || session?.user?.id || null;
   const userEmail = user?.email || session?.user?.email || "";
 
+  // Sufijo para guardar cosas de ESTE usuario
+  const userKeySuffix = userId || userEmail || "anon";
+  const USER_ARTISTS_KEY = `artists_${userKeySuffix}`;
+
   function updateField(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
@@ -123,6 +127,7 @@ export default function AddArtist() {
     try {
       if (!form.name) throw new Error("El nombre es obligatorio");
 
+      // 📌 1) BASE GENERAL (todos los artistas, para directorio, etc.)
       const STORAGE_KEY = "LUMINA_ARTISTS_DB";
 
       const prevRaw = localStorage.getItem(STORAGE_KEY);
@@ -161,32 +166,53 @@ export default function AddArtist() {
         venuesPlayed: [],
       };
 
-      // Nuevo storage principal
       localStorage.setItem(STORAGE_KEY, JSON.stringify([...prev, newArtist]));
 
-      // Copia "legacy" para compatibilidad con otras partes del código
+      // Este formato "simplificado" es el que usan MyContent y otras partes
+      const legacyArtist = {
+        id: newArtist.id,
+        name: newArtist.name,
+        members: newArtist.members,
+        genres: newArtist.genres,
+        photoDataUrl: newArtist.photo,
+        instagram: newArtist.links.instagram,
+        youtube: newArtist.links.youtube,
+        spotify: newArtist.links.spotify,
+        email: newArtist.contact.email,
+        whatsapp: newArtist.contact.whatsapp,
+        hideWhatsapp: newArtist.contact.hideWhatsapp,
+        city: newArtist.city,
+        bio: newArtist.bio,
+        ownerEmail: userEmail || "desconocido",
+      };
+
+      // 📌 2) COPIA GLOBAL LEGACY ("artists") – por compatibilidad
       try {
         const legacyRaw = localStorage.getItem("artists");
         const legacy = legacyRaw ? JSON.parse(legacyRaw) : [];
-        const legacyArtist = {
-          id: newArtist.id,
-          name: newArtist.name,
-          members: newArtist.members,
-          genres: newArtist.genres,
-          photoDataUrl: newArtist.photo,
-          instagram: newArtist.links.instagram,
-          youtube: newArtist.links.youtube,
-          spotify: newArtist.links.spotify,
-          email: newArtist.contact.email,
-          whatsapp: newArtist.contact.whatsapp,
-          hideWhatsapp: newArtist.contact.hideWhatsapp,
-          city: newArtist.city,
-          bio: newArtist.bio,
-          ownerEmail: userEmail || "desconocido",
-        };
         localStorage.setItem(
           "artists",
-          JSON.stringify([...(Array.isArray(legacy) ? legacy : []), legacyArtist])
+          JSON.stringify([
+            ...(Array.isArray(legacy) ? legacy : []),
+            legacyArtist,
+          ])
+        );
+      } catch {
+        /* ignore */
+      }
+
+      // 📌 3) LISTA POR USUARIO ("artists_<user>")
+      try {
+        const userRaw = localStorage.getItem(USER_ARTISTS_KEY);
+        let userArtists = [];
+        if (userRaw) {
+          const arr = JSON.parse(userRaw);
+          if (Array.isArray(arr)) userArtists = arr;
+        }
+        userArtists.push(legacyArtist);
+        localStorage.setItem(
+          USER_ARTISTS_KEY,
+          JSON.stringify(userArtists)
         );
       } catch {
         /* ignore */
@@ -219,7 +245,10 @@ export default function AddArtist() {
   };
 
   return (
-    <div className="page add-artist" style={{ maxWidth: 680, margin: "24px auto" }}>
+    <div
+      className="page add-artist"
+      style={{ maxWidth: 680, margin: "24px auto" }}
+    >
       <h2>Agregar proyecto / artista</h2>
 
       <form onSubmit={handleSubmit} className="card" style={cardStyle}>
@@ -352,7 +381,9 @@ export default function AddArtist() {
             <input
               type="checkbox"
               checked={form.hideWhatsapp}
-              onChange={(e) => updateField("hideWhatsapp", e.target.checked)}
+              onChange={(e) =>
+                updateField("hideWhatsapp", e.target.checked)
+              }
             />
             <span>Ocultar número al público</span>
           </label>

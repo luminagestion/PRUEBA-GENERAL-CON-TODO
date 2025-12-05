@@ -98,6 +98,10 @@ export default function AddVenue() {
   const userId = user?.id || session?.user?.id || null;
   const userEmail = user?.email || session?.user?.email || "";
 
+  // Sufijo para los datos de ESTE usuario
+  const userKeySuffix = userId || userEmail || "anon";
+  const USER_VENUES_KEY = `venues_${userKeySuffix}`;
+
   function updateField(field, value) {
     // Normalizar coordenadas (permite coma decimal)
     if (field === "lat" || field === "lng") {
@@ -121,7 +125,8 @@ export default function AddVenue() {
       if (!form.name) throw new Error("El nombre es obligatorio");
       if (!markerPos) throw new Error("Seleccioná la ubicación en el mapa");
 
-      const venues = loadArray("venues");
+      // 📌 1) Lista global (para mapa/directorio)
+      const globalVenues = loadArray("venues");
 
       const newVenue = {
         id: Date.now().toString(),
@@ -132,7 +137,9 @@ export default function AddVenue() {
         lat: markerPos[0],
         lng: markerPos[1],
         capacity:
-          Number(String(form.capacity).replace(",", ".")) || form.capacity || "",
+          Number(String(form.capacity).replace(",", ".")) ||
+          form.capacity ||
+          "",
         predominantGenre: form.predominantGenre || "",
         contact: {
           email: form.email || "",
@@ -141,7 +148,18 @@ export default function AddVenue() {
         },
       };
 
-      localStorage.setItem("venues", JSON.stringify([...venues, newVenue]));
+      // Guardamos en la lista GLOBAL "venues"
+      localStorage.setItem(
+        "venues",
+        JSON.stringify([...globalVenues, newVenue])
+      );
+
+      // 📌 2) Lista por usuario: "venues_<user>"
+      const userVenues = loadArray(USER_VENUES_KEY);
+      // Para MyContent nos alcanza este formato (puede reutilizar el mismo objeto)
+      userVenues.push(newVenue);
+      localStorage.setItem(USER_VENUES_KEY, JSON.stringify(userVenues));
+
       nav("/venues");
     } catch (err) {
       setError(err.message || "No se pudo guardar");
@@ -209,7 +227,9 @@ export default function AddVenue() {
             <span>Género predominante</span>
             <select
               value={form.predominantGenre}
-              onChange={(e) => updateField("predominantGenre", e.target.value)}
+              onChange={(e) =>
+                updateField("predominantGenre", e.target.value)
+              }
               style={inputStyle}
             >
               <option value="">—</option>
@@ -245,7 +265,9 @@ export default function AddVenue() {
             <input
               type="checkbox"
               checked={form.hideWhatsapp}
-              onChange={(e) => updateField("hideWhatsapp", e.target.checked)}
+              onChange={(e) =>
+                updateField("hideWhatsapp", e.target.checked)
+              }
             />
             <span>Ocultar número al público</span>
           </label>

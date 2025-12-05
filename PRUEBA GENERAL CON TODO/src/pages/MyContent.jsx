@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { getSession } from "../lib/session.js";
 
-// Claves donde vamos a leer lo que guardaste en localStorage.
-// Si en tu proyecto se llaman distinto, podés cambiar estos nombres.
-const ARTISTS_KEY = "artists";
-const VENUES_KEY = "venues";
+// Claves base para localStorage
+const ARTISTS_KEY_BASE = "artists";
+const VENUES_KEY_BASE = "venues";
 
 function safeParse(json) {
   try {
@@ -56,19 +55,49 @@ export default function MyContent() {
   const [artists, setArtists] = useState([]);
   const [venues, setVenues] = useState([]);
 
+  // 🔑 Sufijo por usuario (id o email)
+  const userKeySuffix =
+    session?.user?.id || session?.user?.email || "anon";
+
+  // Claves por usuario
+  const ARTISTS_KEY = `${ARTISTS_KEY_BASE}_${userKeySuffix}`;
+  const VENUES_KEY = `${VENUES_KEY_BASE}_${userKeySuffix}`;
+
+  // Helpers para guardar siempre en localStorage
+  const updateVenues = (updater) => {
+    setVenues((prev) => {
+      const next =
+        typeof updater === "function" ? updater(prev) : updater;
+      localStorage.setItem(VENUES_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const updateArtists = (updater) => {
+    setArtists((prev) => {
+      const next =
+        typeof updater === "function" ? updater(prev) : updater;
+      localStorage.setItem(ARTISTS_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
   useEffect(() => {
-    // Leemos desde localStorage
+    if (!session) return;
+
+    // Leemos desde localStorage PER USUARIO
     const artistsRaw = localStorage.getItem(ARTISTS_KEY);
     const venuesRaw = localStorage.getItem(VENUES_KEY);
 
     const loadedArtists = safeParse(artistsRaw);
     const loadedVenues = safeParse(venuesRaw);
 
-    // 💥 Acá limpiamos duplicados
+    // Limpiamos duplicados
     setArtists(uniqueById(loadedArtists));
     setVenues(uniqueById(loadedVenues));
-  }, []);
+  }, [session, ARTISTS_KEY, VENUES_KEY]);
 
+  // ⚠️ Si no hay sesión, mensaje
   if (!session) {
     return (
       <div className="page my-content-page">
@@ -77,6 +106,86 @@ export default function MyContent() {
       </div>
     );
   }
+
+  // 🗑 BORRAR venue por índice
+  const handleDeleteVenue = (index) => {
+    updateVenues((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ✏️ EDITAR venue con prompts simples
+  const handleEditVenue = (index) => {
+    updateVenues((prev) => {
+      const copy = [...prev];
+      const current = copy[index] || {};
+
+      const name = window.prompt(
+        "Nombre del venue",
+        current.name || ""
+      );
+      if (name === null) return prev;
+
+      const city = window.prompt(
+        "Ciudad",
+        current.city || ""
+      );
+      if (city === null) return prev;
+
+      const capacity = window.prompt(
+        "Capacidad",
+        current.capacity || ""
+      );
+      if (capacity === null) return prev;
+
+      copy[index] = {
+        ...current,
+        name,
+        city,
+        capacity,
+      };
+
+      return copy;
+    });
+  };
+
+  // 🗑 BORRAR artista por índice
+  const handleDeleteArtist = (index) => {
+    updateArtists((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ✏️ EDITAR artista con prompts simples
+  const handleEditArtist = (index) => {
+    updateArtists((prev) => {
+      const copy = [...prev];
+      const current = copy[index] || {};
+
+      const name = window.prompt(
+        "Nombre del artista",
+        current.name || ""
+      );
+      if (name === null) return prev;
+
+      const genre = window.prompt(
+        "Género",
+        current.genre || ""
+      );
+      if (genre === null) return prev;
+
+      const city = window.prompt(
+        "Ciudad",
+        current.city || ""
+      );
+      if (city === null) return prev;
+
+      copy[index] = {
+        ...current,
+        name,
+        genre,
+        city,
+      };
+
+      return copy;
+    });
+  };
 
   return (
     <div className="page my-content-page">
@@ -95,7 +204,9 @@ export default function MyContent() {
                 venue.id ||
                 venue._id ||
                 venue.slug ||
-                (venue.name && venue.city && `${venue.name}|${venue.city}`) ||
+                (venue.name &&
+                  venue.city &&
+                  `${venue.name}|${venue.city}`) ||
                 index;
 
               return (
@@ -112,8 +223,19 @@ export default function MyContent() {
                       <p className="my-meta">Ciudad: {venue.city}</p>
                     )}
                     {venue.capacity && (
-                      <p className="my-meta">Capacidad: {venue.capacity}</p>
+                      <p className="my-meta">
+                        Capacidad: {venue.capacity}
+                      </p>
                     )}
+                  </div>
+
+                  <div className="my-item-actions">
+                    <button onClick={() => handleEditVenue(index)}>
+                      Editar
+                    </button>
+                    <button onClick={() => handleDeleteVenue(index)}>
+                      Borrar
+                    </button>
                   </div>
                 </li>
               );
@@ -156,6 +278,15 @@ export default function MyContent() {
                     {artist.city && (
                       <p className="my-meta">Ciudad: {artist.city}</p>
                     )}
+                  </div>
+
+                  <div className="my-item-actions">
+                    <button onClick={() => handleEditArtist(index)}>
+                      Editar
+                    </button>
+                    <button onClick={() => handleDeleteArtist(index)}>
+                      Borrar
+                    </button>
                   </div>
                 </li>
               );
