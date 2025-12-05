@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { supabase } from "../lib/supabaseClient"; // si tu client es default, cambiá a: import supabase from "../lib/supabaseClient";
 
 const GENRES = [
   "Rock",
@@ -53,19 +54,6 @@ function ClickToSetMarker({ onSet }) {
   return null;
 }
 
-function loadArray(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return arr;
-    }
-  } catch {
-    /* ignore */
-  }
-  return [];
-}
-
 export default function AddVenue() {
   const nav = useNavigate();
   const { user, session, loading } = useAuth();
@@ -96,14 +84,8 @@ export default function AddVenue() {
   }
 
   const userId = user?.id || session?.user?.id || null;
-  const userEmail = user?.email || session?.user?.email || "";
-
-  // Sufijo para los datos de ESTE usuario
-  const userKeySuffix = userId || userEmail || "anon";
-  const USER_VENUES_KEY = `venues_${userKeySuffix}`;
 
   function updateField(field, value) {
-    // Normalizar coordenadas (permite coma decimal)
     if (field === "lat" || field === "lng") {
       if (typeof value === "string") value = value.replace(",", ".");
     }
@@ -124,44 +106,34 @@ export default function AddVenue() {
     try {
       if (!form.name) throw new Error("El nombre es obligatorio");
       if (!markerPos) throw new Error("Seleccioná la ubicación en el mapa");
+      if (!userId) throw new Error("No se pudo identificar al usuario");
 
-      // 📌 1) Lista global (para mapa/directorio)
-      const globalVenues = loadArray("venues");
-
-      const newVenue = {
-        id: Date.now().toString(),
-        ownerId: userId,
-        ownerEmail: userEmail,
+      const payload = {
+        user_id: userId,
         name: form.name.trim(),
-        country: form.country || "",
-        lat: markerPos[0],
-        lng: markerPos[1],
+        country: form.country || null,
+        lat: Number(form.lat),
+        lng: Number(form.lng),
         capacity:
-          Number(String(form.capacity).replace(",", ".")) ||
-          form.capacity ||
-          "",
-        predominantGenre: form.predominantGenre || "",
-        contact: {
-          email: form.email || "",
-          whatsapp: form.whatsapp || "",
-          hideWhatsapp: !!form.hideWhatsapp,
-        },
+          (form.capacity && String(form.capacity)) || null,
+        predominant_genre: form.predominantGenre || null,
+        email: form.email || null,
+        whatsapp: form.whatsapp || null,
+        hide_whatsapp: !!form.hideWhatsapp,
       };
 
-      // Guardamos en la lista GLOBAL "venues"
-      localStorage.setItem(
-        "venues",
-        JSON.stringify([...globalVenues, newVenue])
-      );
+      const { error: insertError } = await supabase
+        .from("venues")
+        .insert(payload);
 
-      // 📌 2) Lista por usuario: "venues_<user>"
-      const userVenues = loadArray(USER_VENUES_KEY);
-      // Para MyContent nos alcanza este formato (puede reutilizar el mismo objeto)
-      userVenues.push(newVenue);
-      localStorage.setItem(USER_VENUES_KEY, JSON.stringify(userVenues));
+      if (insertError) {
+        console.error(insertError);
+        throw new Error("No se pudo guardar en Supabase");
+      }
 
       nav("/venues");
     } catch (err) {
+      console.error(err);
       setError(err.message || "No se pudo guardar");
     } finally {
       setSaving(false);
@@ -189,12 +161,23 @@ export default function AddVenue() {
   return (
     <div
       className="page add-venue"
-      style={{ maxWidth: 900, margin: "24px auto", display: "grid", gap: 16 }}
+      style={{
+        maxWidth: 900,
+        margin: "24px auto",
+        display: "grid",
+        gap: 16,
+      }}
     >
       <h2>Agregar venue</h2>
 
       <form onSubmit={handleSubmit} className="card" style={cardStyle}>
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
+        <div
+          style={{
+            display: "grid",
+            gap: 12,
+            gridTemplateColumns: "1fr 1fr",
+          }}
+        >
           <label style={{ display: "grid", gap: 6 }}>
             <span>Nombre*</span>
             <input
@@ -261,7 +244,14 @@ export default function AddVenue() {
             />
           </label>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
             <input
               type="checkbox"
               checked={form.hideWhatsapp}
@@ -307,7 +297,13 @@ export default function AddVenue() {
             </MapContainer>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+            }}
+          >
             <label style={{ display: "grid", gap: 6 }}>
               <span>Latitud*</span>
               <input
