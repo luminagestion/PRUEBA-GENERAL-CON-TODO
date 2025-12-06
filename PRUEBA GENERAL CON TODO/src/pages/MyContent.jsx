@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { getSession } from "../lib/session.js";
 
+console.log("MyContent v2 con botones"); // DEBUG
+
 const ARTISTS_KEY = "artists";
 const VENUES_KEY = "venues";
 
@@ -84,7 +86,11 @@ export default function MyContent() {
     const venue = venues[index];
     if (!venue) return;
 
-    if (!window.confirm(`¿Eliminar la venue "${venue.name || "sin nombre"}"?`)) {
+    if (
+      !window.confirm(
+        `¿Eliminar la venue "${venue.name || "sin nombre"}"?`
+      )
+    ) {
       return;
     }
 
@@ -93,10 +99,8 @@ export default function MyContent() {
   }
 
   function handleEditVenue(index) {
-    // Por ahora solo redirige al formulario de agregar venue.
-    // En una próxima iteración podemos pre-cargar el formulario.
     const venue = venues[index];
-    console.log("Editar venue desde MyContent (pendiente flujo completo):", venue);
+    console.log("Editar venue desde MyContent (pendiente prefill):", venue);
     window.location.href = "/add-venue";
   }
 
@@ -106,7 +110,11 @@ export default function MyContent() {
     const artist = artists[index];
     if (!artist) return;
 
-    if (!window.confirm(`¿Eliminar el artista "${artist.name || "sin nombre"}"?`)) {
+    if (
+      !window.confirm(
+        `¿Eliminar el artista "${artist.name || "sin nombre"}"?`
+      )
+    ) {
       return;
     }
 
@@ -115,13 +123,11 @@ export default function MyContent() {
   }
 
   function handleEditArtist(index) {
-    // Igual que venues: de momento redirigimos al directorio / formulario.
     const artist = artists[index];
-    console.log("Editar artista desde MyContent (pendiente flujo completo):", artist);
+    console.log("Editar artista desde MyContent (pendiente prefill):", artist);
     window.location.href = "/add-artist";
   }
 
-  // Si no hay sesión, mensaje básico
   if (!session) {
     return (
       <div className="page my-content-page">
@@ -134,6 +140,7 @@ export default function MyContent() {
   return (
     <div className="page my-content-page">
       <h1>Mis venues y artistas</h1>
+      <p style={{ fontSize: 12, opacity: 0.4 }}>v2</p>
 
       {/* VENUES ------------------------------------------------------------- */}
       <section className="my-section">
