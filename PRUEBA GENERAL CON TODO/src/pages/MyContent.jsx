@@ -82,7 +82,8 @@ export default function MyContent() {
   function handleEditVenue(index) {
     const venue = venues[index];
     console.log("Editar venue (solo navega por ahora):", venue);
-    navigate("/add-venue");
+    navigate(`/edit-venue/${venue.id}`);
+
   }
 
   async function handleDeleteVenue(index) {
@@ -114,7 +115,8 @@ export default function MyContent() {
   function handleEditArtist(index) {
     const artist = artists[index];
     console.log("Editar artista (solo navega por ahora):", artist);
-    navigate("/add-artist");
+    navigate(`/edit-artist/${artist.id}`);
+
   }
 
   function handleDeleteArtist(index) {
