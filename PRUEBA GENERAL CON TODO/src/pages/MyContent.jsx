@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
 import { getSession } from "../lib/session.js";
 
-console.log("MyContent v2 con botones"); // DEBUG
-
 const ARTISTS_KEY = "artists";
-const VENUES_KEY = "venues";
 
 function safeParse(json) {
   try {
@@ -16,28 +15,6 @@ function safeParse(json) {
   }
 }
 
-// Saca duplicados usando un "id lógico"
-function uniqueById(items) {
-  const map = new Map();
-
-  for (const item of items || []) {
-    const id =
-      item.id ||
-      item._id ||
-      item.slug ||
-      (item.name && item.city && `${item.name}|${item.city}`) ||
-      (item.name && item.address && `${item.name}|${item.address}`) ||
-      JSON.stringify(item);
-
-    if (!map.has(id)) {
-      map.set(id, item);
-    }
-  }
-
-  return Array.from(map.values());
-}
-
-// Intenta encontrar alguna propiedad de imagen razonable
 function getImage(item) {
   return (
     item.imageUrl ||
@@ -53,79 +30,112 @@ function getImage(item) {
 }
 
 export default function MyContent() {
+  const navigate = useNavigate();
   const [session] = useState(getSession());
+
   const [artists, setArtists] = useState([]);
   const [venues, setVenues] = useState([]);
+  const [loadingVenues, setLoadingVenues] = useState(true);
+  const [loadingArtists, setLoadingArtists] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Carga inicial desde localStorage
+  // Cargar VENUES desde Supabase (TODOS, sin filtrar por usuario por ahora)
   useEffect(() => {
-    const artistsRaw = localStorage.getItem(ARTISTS_KEY);
-    const venuesRaw = localStorage.getItem(VENUES_KEY);
+    async function loadVenues() {
+      try {
+        setLoadingVenues(true);
+        setError(null);
 
-    const loadedArtists = safeParse(artistsRaw);
-    const loadedVenues = safeParse(venuesRaw);
+        const { data, error: dbError } = await supabase
+          .from("venues")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-    setArtists(uniqueById(loadedArtists));
-    setVenues(uniqueById(loadedVenues));
+        if (dbError) throw dbError;
+
+        setVenues(data || []);
+      } catch (err) {
+        console.error("Error cargando venues:", err);
+        setError("No se pudieron cargar las venues.");
+      } finally {
+        setLoadingVenues(false);
+      }
+    }
+
+    loadVenues();
   }, []);
 
-  // Helpers para guardar cambios en localStorage
-  function persistVenues(next) {
-    localStorage.setItem(VENUES_KEY, JSON.stringify(next));
-    setVenues(next);
+  // Cargar ARTISTS desde localStorage (TODOS)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ARTISTS_KEY);
+      const all = safeParse(raw);
+      setArtists(all);
+    } catch (err) {
+      console.error("Error cargando artistas:", err);
+    } finally {
+      setLoadingArtists(false);
+    }
+  }, []);
+
+  // Handlers VENUES
+  function handleEditVenue(index) {
+    const venue = venues[index];
+    console.log("Editar venue (solo navega por ahora):", venue);
+    navigate("/add-venue");
   }
 
-  function persistArtists(next) {
-    localStorage.setItem(ARTISTS_KEY, JSON.stringify(next));
-    setArtists(next);
-  }
-
-  // --- VENUES: borrar / editar ---------------------------------------------
-
-  function handleDeleteVenue(index) {
+  async function handleDeleteVenue(index) {
     const venue = venues[index];
     if (!venue) return;
 
-    if (
-      !window.confirm(
-        `¿Eliminar la venue "${venue.name || "sin nombre"}"?`
-      )
-    ) {
+    if (!window.confirm(`¿Eliminar la venue "${venue.name || "sin nombre"}"?`)) {
       return;
     }
 
-    const next = venues.filter((_, i) => i !== index);
-    persistVenues(next);
+    try {
+      if (venue.id) {
+        const { error: delError } = await supabase
+          .from("venues")
+          .delete()
+          .eq("id", venue.id);
+
+        if (delError) throw delError;
+      }
+
+      setVenues((prev) => prev.filter((_, i) => i !== index));
+    } catch (err) {
+      console.error("Error eliminando venue:", err);
+      alert("No se pudo eliminar la venue.");
+    }
   }
 
-  function handleEditVenue(index) {
-    const venue = venues[index];
-    console.log("Editar venue desde MyContent (pendiente prefill):", venue);
-    window.location.href = "/add-venue";
+  // Handlers ARTISTS
+  function handleEditArtist(index) {
+    const artist = artists[index];
+    console.log("Editar artista (solo navega por ahora):", artist);
+    navigate("/add-artist");
   }
-
-  // --- ARTISTAS: borrar / editar -------------------------------------------
 
   function handleDeleteArtist(index) {
     const artist = artists[index];
     if (!artist) return;
 
-    if (
-      !window.confirm(
-        `¿Eliminar el artista "${artist.name || "sin nombre"}"?`
-      )
-    ) {
+    if (!window.confirm(`¿Eliminar el artista "${artist.name || "sin nombre"}"?`)) {
       return;
     }
 
-    const next = artists.filter((_, i) => i !== index);
-    persistArtists(next);
-  }
+    try {
+      const raw = localStorage.getItem(ARTISTS_KEY);
+      const arr = safeParse(raw).filter(
+        (a) => a.id !== artist.id && a.name !== artist.name
+      );
+      localStorage.setItem(ARTISTS_KEY, JSON.stringify(arr));
+    } catch (err) {
+      console.error("Error actualizando localStorage de artists:", err);
+    }
 
-  function handleEditArtist(index) {
-    const artist = artists[index];
-    console.log("Editar artista desde MyContent (pendiente prefill):", artist);
-    window.location.href = "/add-artist";
+    setArtists((prev) => prev.filter((_, i) => i !== index));
   }
 
   if (!session) {
@@ -140,91 +150,90 @@ export default function MyContent() {
   return (
     <div className="page my-content-page">
       <h1>Mis venues y artistas</h1>
-      <p style={{ fontSize: 12, opacity: 0.4 }}>v2</p>
 
-      {/* VENUES ------------------------------------------------------------- */}
+      {error && (
+        <div className="alert error" style={{ marginBottom: 16 }}>
+          {error}
+        </div>
+      )}
+
+      {/* VENUES */}
       <section className="my-section">
         <h2>Mis venues</h2>
-        {venues.length === 0 ? (
-          <p>No tenés venues cargados todavía.</p>
+        {loadingVenues ? (
+          <p>Cargando venues…</p>
+        ) : venues.length === 0 ? (
+          <p>No hay venues cargadas todavía.</p>
         ) : (
           <ul className="my-grid">
-            {venues.map((venue, index) => {
-              const key =
-                venue.id ||
-                venue._id ||
-                venue.slug ||
-                (venue.name && venue.city && `${venue.name}|${venue.city}`) ||
-                index;
+            {venues.map((venue, index) => (
+              <li key={venue.id ?? index} className="my-item-card">
+                <div className="my-item-info">
+                  <h3>{venue.name || "Sin nombre"}</h3>
+                  {venue.country && (
+                    <p className="my-meta">País: {venue.country}</p>
+                  )}
+                  {(venue.capacity || venue.capacidad) && (
+                    <p className="my-meta">
+                      Capacidad: {venue.capacity ?? venue.capacidad}
+                    </p>
+                  )}
+                  {(venue.predominant_genre || venue.predominantGenre) && (
+                    <p className="my-meta">
+                      Género predominante:{" "}
+                      {venue.predominant_genre ?? venue.predominantGenre}
+                    </p>
+                  )}
+                </div>
 
-              return (
-                <li key={key} className="my-item-card">
-                  <div className="my-item-info">
-                    <h3>{venue.name || "Sin nombre"}</h3>
-                    {venue.country && (
-                      <p className="my-meta">País: {venue.country}</p>
-                    )}
-                    {venue.capacity && (
-                      <p className="my-meta">Capacidad: {venue.capacity}</p>
-                    )}
-                    {venue.predominantGenre && (
-                      <p className="my-meta">
-                        Género predominante: {venue.predominantGenre}
-                      </p>
-                    )}
-                  </div>
-
-                  <div
-                    className="my-item-actions"
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      marginTop: 8,
-                      justifyContent: "flex-end",
-                    }}
+                <div
+                  className="my-item-actions"
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    marginTop: 8,
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn small"
+                    onClick={() => handleEditVenue(index)}
                   >
-                    <button
-                      type="button"
-                      className="btn small"
-                      onClick={() => handleEditVenue(index)}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      className="btn ghost small"
-                      onClick={() => handleDeleteVenue(index)}
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn ghost small"
+                    onClick={() => handleDeleteVenue(index)}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </li>
+            ))}
           </ul>
         )}
       </section>
 
-      {/* ARTISTAS ----------------------------------------------------------- */}
+      {/* ARTISTAS */}
       <section className="my-section">
         <h2>Mis artistas</h2>
-        {artists.length === 0 ? (
-          <p>No tenés artistas cargados todavía.</p>
+        {loadingArtists ? (
+          <p>Cargando artistas…</p>
+        ) : artists.length === 0 ? (
+          <p>No hay artistas cargados todavía.</p>
         ) : (
           <ul className="my-grid">
             {artists.map((artist, index) => {
               const img = getImage(artist);
-              const key =
-                artist.id ||
-                artist._id ||
-                artist.slug ||
-                (artist.name &&
-                  artist.city &&
-                  `${artist.name}|${artist.city}`) ||
-                index;
+              const genresText =
+                Array.isArray(artist.genres) && artist.genres.length > 0
+                  ? artist.genres.join(", ")
+                  : artist.genre || "";
 
               return (
-                <li key={key} className="my-item-card">
+                <li key={artist.id ?? index} className="my-item-card">
                   <div style={{ display: "flex", gap: 12 }}>
                     {img && (
                       <div className="my-item-thumb">
@@ -243,12 +252,9 @@ export default function MyContent() {
 
                     <div className="my-item-info">
                       <h3>{artist.name || "Sin nombre"}</h3>
-                      {Array.isArray(artist.genres) &&
-                        artist.genres.length > 0 && (
-                          <p className="my-meta">
-                            Géneros: {artist.genres.join(", ")}
-                          </p>
-                        )}
+                      {genresText && (
+                        <p className="my-meta">Géneros: {genresText}</p>
+                      )}
                       {artist.city && (
                         <p className="my-meta">Ciudad: {artist.city}</p>
                       )}
@@ -275,7 +281,7 @@ export default function MyContent() {
                       type="button"
                       className="btn ghost small"
                       onClick={() => handleDeleteArtist(index)}
-                    >
+                  >
                       Eliminar
                     </button>
                   </div>
