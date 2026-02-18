@@ -119,18 +119,38 @@ export default function MyContent() {
     setVenues((prev) => prev.filter((v) => v.id !== venueId));
   };
 
-  // ✅ Cargar ARTISTS desde localStorage (TODOS)
-  useEffect(() => {
+  // Cargar ARTISTS desde Supabase (solo del usuario logueado)
+useEffect(() => {
+  async function loadArtists() {
     try {
-      const raw = localStorage.getItem(ARTISTS_KEY);
-      const all = safeParse(raw);
-      setArtists(all);
+      setLoadingArtists(true);
+
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user;
+
+      if (!user) {
+        setArtists([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("artists")
+        .select("*")
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setArtists(data || []);
     } catch (err) {
       console.error("Error cargando artistas:", err);
     } finally {
       setLoadingArtists(false);
     }
-  }, []);
+  }
+
+  loadArtists();
+}, []);
 
   // ✅ EDIT venue
   function handleEditVenue(venueId) {
