@@ -118,19 +118,20 @@ export default function AddArtist() {
       if (!form.name) throw new Error("El nombre es obligatorio");
 
       const { error: insertError } = await supabase.from("artists").insert({
-        user_id: userId,
-        name: form.name.trim(),
-        members: Number(form.members) || 1,
-        genres: form.genres,
-        photo: form.photo,
-        bio: form.bio,
-        instagram: form.instagram,
-        youtube: form.youtube,
-        spotify: form.spotify,
-        email: form.email,
-        whatsapp: form.whatsapp,
-        city: form.city,
-      });
+  owner_id: userId, // ✅ corregido
+  name: form.name.trim(),
+  members: Number(form.members) || 1,
+  genres: form.genres,
+  photo: form.photo,
+  bio: form.bio,
+  instagram: form.instagram,
+  youtube: form.youtube,
+  spotify: form.spotify,
+  email: form.email,
+  whatsapp: form.whatsapp,
+  city: form.city,
+});
+
 
       if (insertError) throw insertError;
 
