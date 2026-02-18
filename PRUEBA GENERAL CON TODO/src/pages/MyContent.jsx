@@ -39,16 +39,26 @@ export default function MyContent() {
   const [loadingArtists, setLoadingArtists] = useState(true);
   const [error, setError] = useState(null);
 
-  // Cargar VENUES desde Supabase (TODOS, sin filtrar por usuario por ahora)
+  // ✅ Cargar VENUES desde Supabase (SOLO del usuario logueado)
   useEffect(() => {
     async function loadVenues() {
       try {
         setLoadingVenues(true);
         setError(null);
 
+        const { data: authData, error: authErr } = await supabase.auth.getUser();
+        const user = authData?.user;
+
+        if (authErr || !user) {
+          console.error("No hay usuario logueado", authErr);
+          setVenues([]);
+          return;
+        }
+
         const { data, error: dbError } = await supabase
           .from("venues")
           .select("*")
+          .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
         if (dbError) throw dbError;
@@ -65,7 +75,38 @@ export default function MyContent() {
     loadVenues();
   }, []);
 
-  // Cargar ARTISTS desde localStorage (TODOS)
+  // ✅ BORRAR venue por ID (con confirmación + check de permisos)
+  const handleDeleteVenue = async (venueId) => {
+    const venue = venues.find((v) => v.id === venueId);
+
+    if (
+      !window.confirm(`¿Eliminar la venue "${venue?.name || "sin nombre"}"?`)
+    ) {
+      return;
+    }
+
+    const { data: deleted, error: delError } = await supabase
+      .from("venues")
+      .delete()
+      .eq("id", venueId)
+      .select("id"); // importante para saber si borró realmente
+
+    if (delError) {
+      console.error("Error borrando venue:", delError);
+      alert("No se pudo borrar (permiso o error).");
+      return;
+    }
+
+    // Si RLS bloquea, suele volver deleted vacío
+    if (!deleted || deleted.length === 0) {
+      alert("No tenés permisos para borrar este venue.");
+      return;
+    }
+
+    setVenues((prev) => prev.filter((v) => v.id !== venueId));
+  };
+
+  // ✅ Cargar ARTISTS desde localStorage (TODOS)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(ARTISTS_KEY);
@@ -78,52 +119,25 @@ export default function MyContent() {
     }
   }, []);
 
-  // Handlers VENUES
-  function handleEditVenue(index) {
-    const venue = venues[index];
-    console.log("Editar venue (solo navega por ahora):", venue);
-    navigate(`/edit-venue/${venue.id}`);
-
+  // ✅ EDIT venue
+  function handleEditVenue(venueId) {
+    navigate(`/edit-venue/${venueId}`);
   }
 
-  async function handleDeleteVenue(index) {
-    const venue = venues[index];
-    if (!venue) return;
-
-    if (!window.confirm(`¿Eliminar la venue "${venue.name || "sin nombre"}"?`)) {
-      return;
-    }
-
-    try {
-      if (venue.id) {
-        const { error: delError } = await supabase
-          .from("venues")
-          .delete()
-          .eq("id", venue.id);
-
-        if (delError) throw delError;
-      }
-
-      setVenues((prev) => prev.filter((_, i) => i !== index));
-    } catch (err) {
-      console.error("Error eliminando venue:", err);
-      alert("No se pudo eliminar la venue.");
-    }
-  }
-
-  // Handlers ARTISTS
+  // ✅ EDIT artist
   function handleEditArtist(index) {
     const artist = artists[index];
-    console.log("Editar artista (solo navega por ahora):", artist);
     navigate(`/edit-artist/${artist.id}`);
-
   }
 
+  // ✅ DELETE artist (localStorage)
   function handleDeleteArtist(index) {
     const artist = artists[index];
     if (!artist) return;
 
-    if (!window.confirm(`¿Eliminar el artista "${artist.name || "sin nombre"}"?`)) {
+    if (
+      !window.confirm(`¿Eliminar el artista "${artist.name || "sin nombre"}"?`)
+    ) {
       return;
     }
 
@@ -162,28 +176,29 @@ export default function MyContent() {
       {/* VENUES */}
       <section className="my-section">
         <h2>Mis venues</h2>
+
         {loadingVenues ? (
           <p>Cargando venues…</p>
         ) : venues.length === 0 ? (
           <p>No hay venues cargadas todavía.</p>
         ) : (
           <ul className="my-grid">
-            {venues.map((venue, index) => (
-              <li key={venue.id ?? index} className="my-item-card">
+            {venues.map((venue) => (
+              <li key={venue.id} className="my-item-card">
                 <div className="my-item-info">
                   <h3>{venue.name || "Sin nombre"}</h3>
+
                   {venue.country && (
                     <p className="my-meta">País: {venue.country}</p>
                   )}
-                  {(venue.capacity || venue.capacidad) && (
-                    <p className="my-meta">
-                      Capacidad: {venue.capacity ?? venue.capacidad}
-                    </p>
+
+                  {venue.capacity != null && (
+                    <p className="my-meta">Capacidad: {venue.capacity}</p>
                   )}
-                  {(venue.predominant_genre || venue.predominantGenre) && (
+
+                  {venue.predominant_genre && (
                     <p className="my-meta">
-                      Género predominante:{" "}
-                      {venue.predominant_genre ?? venue.predominantGenre}
+                      Género predominante: {venue.predominant_genre}
                     </p>
                   )}
                 </div>
@@ -200,14 +215,15 @@ export default function MyContent() {
                   <button
                     type="button"
                     className="btn small"
-                    onClick={() => handleEditVenue(index)}
+                    onClick={() => handleEditVenue(venue.id)}
                   >
                     Editar
                   </button>
+
                   <button
                     type="button"
                     className="btn ghost small"
-                    onClick={() => handleDeleteVenue(index)}
+                    onClick={() => handleDeleteVenue(venue.id)}
                   >
                     Eliminar
                   </button>
@@ -221,6 +237,7 @@ export default function MyContent() {
       {/* ARTISTAS */}
       <section className="my-section">
         <h2>Mis artistas</h2>
+
         {loadingArtists ? (
           <p>Cargando artistas…</p>
         ) : artists.length === 0 ? (
@@ -279,11 +296,12 @@ export default function MyContent() {
                     >
                       Editar
                     </button>
+
                     <button
                       type="button"
                       className="btn ghost small"
                       onClick={() => handleDeleteArtist(index)}
-                  >
+                    >
                       Eliminar
                     </button>
                   </div>
