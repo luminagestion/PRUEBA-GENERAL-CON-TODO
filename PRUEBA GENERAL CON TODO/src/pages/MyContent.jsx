@@ -41,39 +41,52 @@ export default function MyContent() {
 
   // ✅ Cargar VENUES desde Supabase (SOLO del usuario logueado)
   useEffect(() => {
-    async function loadVenues() {
-      try {
-        setLoadingVenues(true);
-        setError(null);
+  async function loadVenues() {
+    try {
+      setLoadingVenues(true);
+      setError(null);
 
-        const { data: authData, error: authErr } = await supabase.auth.getUser();
-        const user = authData?.user;
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      const user = authData?.user;
 
-        if (authErr || !user) {
-          console.error("No hay usuario logueado", authErr);
-          setVenues([]);
-          return;
-        }
-
-        const { data, error: dbError } = await supabase
-          .from("venues")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (dbError) throw dbError;
-
-        setVenues(data || []);
-      } catch (err) {
-        console.error("Error cargando venues:", err);
-        setError("No se pudieron cargar las venues.");
-      } finally {
-        setLoadingVenues(false);
+      if (authErr || !user) {
+        setVenues([]);
+        return;
       }
-    }
 
-    loadVenues();
-  }, []);
+      // 1) chequear rol
+      const { data: roleRow, error: roleErr } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (roleErr) throw roleErr;
+
+      const isAdmin = roleRow?.role === "admin";
+
+      // 2) query venues
+      let q = supabase.from("venues").select("*").order("created_at", { ascending: false });
+
+      if (!isAdmin) {
+        q = q.eq("user_id", user.id);
+      }
+
+      const { data, error: dbError } = await q;
+      if (dbError) throw dbError;
+
+      setVenues(data || []);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudieron cargar las venues.");
+    } finally {
+      setLoadingVenues(false);
+    }
+  }
+
+  loadVenues();
+}, []);
+
 
   // ✅ BORRAR venue por ID (con confirmación + check de permisos)
   const handleDeleteVenue = async (venueId) => {
