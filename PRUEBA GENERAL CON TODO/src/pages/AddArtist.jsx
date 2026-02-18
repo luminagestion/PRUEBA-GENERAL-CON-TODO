@@ -110,12 +110,18 @@ export default function AddArtist() {
   }
 
   async function handleSubmit(e) {
+     console.log("AddArtist.jsx VERSION owner_id OK");
     e.preventDefault();
     setError(null);
     setSaving(true);
 
     try {
       if (!form.name) throw new Error("El nombre es obligatorio");
+      console.log("PAYLOAD ARTISTS", {
+  owner_id: userId,
+  name: form.name.trim(),
+});
+
 
       const { error: insertError } = await supabase.from("artists").insert({
   owner_id: userId, // ✅ corregido
