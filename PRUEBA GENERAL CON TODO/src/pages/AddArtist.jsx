@@ -163,7 +163,7 @@ export default function AddArtist() {
   return (
     <div className="page add-artist" style={{ maxWidth: 680, margin: "24px auto" }}>
       <h2>Agregar proyecto / artista</h2>
-console.log("AddArtist.jsx VERSION owner_id OK");
+
       <form onSubmit={handleSubmit} className="card" style={cardStyle}>
         <label>
           <span>Nombre*</span>
