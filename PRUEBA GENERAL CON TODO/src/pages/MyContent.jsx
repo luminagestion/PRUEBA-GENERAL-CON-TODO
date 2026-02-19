@@ -32,7 +32,8 @@ function getImage(item) {
 
 export default function MyContent() {
   const navigate = useNavigate();
-  const [session] = useState(getSession());
+ const { user, loading } = useAuth();
+
 
   const [artists, setArtists] = useState([]);
   const [venues, setVenues] = useState([]);

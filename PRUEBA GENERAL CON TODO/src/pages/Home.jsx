@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { getSession } from '../lib/session.js'
 
 export default function Home(){
-  const session = getSession()
+  
   const nav = useNavigate()
   function goProtected(path){
     if(!getSession()) return nav('/login?redirect='+encodeURIComponent(path))
