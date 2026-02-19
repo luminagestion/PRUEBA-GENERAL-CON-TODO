@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { getSession } from "../lib/session.js";
+import { useAuth } from "../context/AuthContext";
+
 
 const ARTISTS_KEY = "artists";
 
